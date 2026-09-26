@@ -49,6 +49,23 @@ button{font:inherit;color:inherit}
 #near{font-size:13px;color:var(--uimuted);margin-top:2px}
 #look{font-size:13px;margin-top:6px;padding-top:6px;border-top:1px solid var(--uiline);line-height:1.45}
 #look b{color:var(--accent);font-weight:700;letter-spacing:.04em}
+#win{position:fixed;left:0;right:0;bottom:0;max-height:80%;overflow:auto;background:var(--ui);border-top-left-radius:16px;border-top-right-radius:16px;padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 18px);box-shadow:0 -6px 30px rgba(0,0,0,.3)}
+#win .inner{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+#win h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--uimuted);margin:0 0 4px;font-weight:400;display:flex;justify-content:space-between;gap:8px}
+#win h2 span{letter-spacing:.02em;text-transform:none}
+.wstats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--uiline);border:1px solid var(--uiline);border-radius:10px;overflow:hidden}
+.wstats div{background:var(--ui2);padding:7px 10px}
+.wstats .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--uimuted)}
+.wstats .v{font-size:17px;font-weight:700}
+#wLists{display:flex;flex-direction:column;gap:16px}
+.wlist{display:flex;flex-direction:column}
+.wrow{display:grid;grid-template-columns:10px 1fr auto;gap:4px 10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--uiline)}
+.wrow i{width:9px;height:9px;border-radius:50%;display:block;transform:translateY(-1px)}
+.wrow b{font-size:14px}
+.wrow .d{font-size:14px;font-weight:700;white-space:nowrap}
+.wrow .h{grid-column:2/-1;font-size:12.5px;color:var(--uimuted)}
+.wnone{font-size:13px;color:var(--uimuted);padding:6px 0}
+.wnote{font-size:12px;color:var(--uimuted);line-height:1.5;margin:0}
 #card{pointer-events:auto;background:var(--ui);border:1px solid var(--uiline);border-radius:10px;padding:8px 12px;max-width:min(520px,100%);box-shadow:0 2px 10px rgba(0,0,0,.18)}
 #cardT{font-weight:700;font-size:14px}#cardS{font-size:12px;color:var(--uimuted);margin-top:2px}
 #layers .pill[aria-pressed="true"]{background:var(--ui2);color:var(--uitext);border-color:var(--uitext);font-weight:700}
@@ -115,6 +132,7 @@ button{font:inherit;color:inherit}
   <button id="follow" aria-pressed="true" title="Follow my position" aria-label="Follow my position"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="8"/></svg></button>
   <button id="zin" title="Zoom in" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button id="zout" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+  <button id="winBtn" title="Window view" aria-label="Window view"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M6 13c3-2 9-2 12 0"/></svg></button>
   <button id="menu" title="Destination and settings" aria-label="Destination and settings"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 </div>
 
@@ -134,6 +152,25 @@ button{font:inherit;color:inherit}
 </div>
 
 <div id="scrim" hidden></div>
+<div id="win" hidden role="dialog" aria-label="Window view">
+  <div class="inner">
+    <div class="hd"><strong>Window view</strong><button class="x" id="winClose">Done</button></div>
+    <div class="row" id="seat">
+      <button class="pill" data-s="L">Left window</button>
+      <button class="pill" data-s="R">Right window</button>
+      <button class="pill" data-s="B">Both sides</button>
+    </div>
+    <div class="wstats">
+      <div><div class="k">Height</div><div class="v mono" id="wH">—</div></div>
+      <div><div class="k">Horizon</div><div class="v mono" id="wHz">—</div></div>
+      <div><div class="k">Hidden under plane</div><div class="v mono" id="wMin">—</div></div>
+      <div><div class="k">Clear-day detail</div><div class="v mono" id="wMax">—</div></div>
+    </div>
+    <p class="wnote" id="wNote"></p>
+    <div id="wLists"></div>
+    <p class="wnote">Assumes you can see about 50° down from a window seat and forward and back about 55° from straight out. Seats over the wing, clouds and haze will hide more. The shaded bands on the map show what each window can see.</p>
+  </div>
+</div>
 <div id="sheet" hidden role="dialog" aria-label="Destination and settings">
   <div class="inner">
     <div class="hd"><strong>Flight setup</strong><button class="x" id="close">Done</button></div>
@@ -169,6 +206,7 @@ button{font:inherit;color:inherit}
       <div class="row" id="themes">
         <button class="pill" data-t="day">Day chart</button>
         <button class="pill" data-t="night">Night cabin</button>
+        <button class="pill" id="zonesBtn">Window zones on map</button>
       </div>
     </div>
     <div>
@@ -331,7 +369,7 @@ function draw(){
   pathParts(L.countryLines, vb, false); ctx.strokeStyle=C.border; ctx.lineWidth= z>=6?2:1.4; ctx.stroke();
 
   labelBoxes=[];
-  for(const id of ['ctl','where','status','tape','scale','card']){ const r=$(id).getBoundingClientRect(); if(r.width) labelBoxes.push([r.left-4,r.top-4,r.width+8,r.height+8]); }
+  for(const id of ['ctl','where','status','tape','scale','card','win']){ const r=$(id).getBoundingClientRect(); if(r.width) labelBoxes.push([r.left-4,r.top-4,r.width+8,r.height+8]); }
   // reserve space for ownship
   if(pos){ const [px,py]=toScreen(mx(pos.lon),my(pos.lat)); labelBoxes.push([px-22,py-22,44,44]); }
 
@@ -418,6 +456,19 @@ function draw(){
   // ownship
   if(pos){
     const [px,py]=toScreen(mx(pos.lon),my(pos.lat));
+    if(zonesOn && WV && !WV.noTrack && WV.G.h>=100){
+      const mpp=40075016.686*Math.cos(pos.lat*D2R)/scale(), G=WV.G;
+      const r0=G.rMin/mpp, r1=Math.min(G.practical,160000)/mpp;
+      const sides = seat==='B'?['L','R']:[seat];
+      for(const sd of ['L','R']){
+        const on=sides.includes(sd);
+        const a0 = sd==='R' ? pos.trk+SIDE_LO : pos.trk-SIDE_HI, a1 = sd==='R' ? pos.trk+SIDE_HI : pos.trk-SIDE_LO;
+        const c0=(a0-90)*D2R, c1=(a1-90)*D2R;
+        ctx.beginPath(); ctx.arc(px,py,r1,c0,c1); ctx.arc(px,py,Math.max(r0,1),c1,c0,true); ctx.closePath();
+        ctx.fillStyle=C.ship; ctx.globalAlpha=on?0.13:0.05; ctx.fill(); ctx.globalAlpha=on?0.55:0.25; ctx.strokeStyle=C.ship; ctx.lineWidth=1; ctx.stroke(); ctx.globalAlpha=1;
+      }
+      if(r0>6){ ctx.beginPath(); ctx.arc(px,py,r0,0,TAU); ctx.setLineDash([3,4]); ctx.strokeStyle=C.shipline; ctx.globalAlpha=0.45; ctx.lineWidth=1.2; ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1; }
+    }
     // accuracy ring
     if(pos.acc && pos.acc>200){ const mpp = 40075016.686*Math.cos(pos.lat*D2R)/scale(); const rr=pos.acc/mpp; if(rr>14 && rr<Math.max(W,H)){ ctx.beginPath(); ctx.arc(px,py,rr,0,TAU); ctx.fillStyle=C.ship; ctx.globalAlpha=0.12; ctx.fill(); ctx.globalAlpha=1; } }
     // 10-minute track vector
@@ -513,6 +564,109 @@ function identify(px,py){
   clearTimeout(cardT); cardT=setTimeout(()=>{ $('card').hidden=true; dirty=true; }, 6000);
 }
 
+/* ---------- window view model ---------- */
+const MAXDEP = 50;               // degrees below level a passenger can see from a window
+const SIDE_LO = 35, SIDE_HI = 145; // relative bearings visible out a side window
+const HAZE = 90000;              // meters of useful detail on a clear day
+let seat = store.get('seat','B'), zonesOn = store.get('zones', 1);
+let WV = null;                   // last scan result
+function heightNow(){
+  if(pos && pos.alt!=null && pos.alt>30) return {h:Math.max(30,pos.alt-150), est:false};
+  if(pos && (pos.spd||0)>120) return {h:10500, est:true};
+  if(pos && (pos.spd||0)>40) return {h:3000, est:true};
+  return {h:0, est:true};
+}
+function geomFor(h){ const horizon=3570*Math.sqrt(Math.max(h,1))*1.07; return {h, horizon, rMin:h/Math.tan(MAXDEP*D2R), practical:Math.min(horizon,HAZE)}; }
+function sunElev(lat,lon,date){
+  const d=date/86400000+2440587.5-2451545.0, g=(357.529+0.98560028*d)*D2R, q=280.459+0.98564736*d;
+  const L=(q+1.915*Math.sin(g)+0.020*Math.sin(2*g))*D2R, e=(23.439-0.00000036*d)*D2R;
+  const ra=Math.atan2(Math.cos(e)*Math.sin(L),Math.cos(L)), dec=Math.asin(Math.sin(e)*Math.sin(L));
+  const gmst=(18.697374558+24.06570982441908*d)%24, ha=((gmst*15+lon)*D2R-ra);
+  return R2D*Math.asin(Math.sin(lat*D2R)*Math.sin(dec)+Math.cos(lat*D2R)*Math.cos(dec)*Math.cos(ha));
+}
+function visRange(q){
+  if(q.cat==='city') return q.pop>=1e6?120000:q.pop>=250000?85000:q.pop>=100000?60000:35000;
+  if(q.cat==='wa'){ const k=q.note; if(k==='Ocean'||k==='Sea'||k==='Great Lake') return 160000; if(k==='Bay'||k==='Sound'||k==='Lagoon') return 90000; if(k==='River') return q.mz<=6?45000:22000; return q.mz<=6?75000:40000; }
+  return {pk:140000,np:60000,sp:30000,st:q.mz<=6?32000:22000,rc:32000,go:15000,lm:q.mz<=5?45000:22000}[q.cat]||20000;
+}
+function catWeight(q){ return q.cat==='city'?(q.pop>=250000?1.3:1):q.cat==='lm'||q.cat==='np'||q.cat==='pk'?1.25:q.cat==='wa'?(q.note==='River'?0.8:1.15):1; }
+function lookWords(dep){ return dep>=40?'look steeply down':dep>=20?'look well down':dep>=8?'look down a little':'near the horizon'; }
+function foreAft(a){ return a<70?'toward the front':a>110?'toward the back':'straight out'; }
+function scanWindow(){
+  if(!pos){ WV=null; return; }
+  const {h,est}=heightNow(); const G=geomFor(h); G.est=est;
+  const dark = sunElev(pos.lat,pos.lon,Date.now()) < -6;
+  const out={G,dark,left:[],right:[],soon:[],under:[],noTrack:pos.trk==null};
+  if(h<100){ WV=out; return; }
+  const cands=[];
+  for(const q of POIS){ if(catOn(q.cat) && !(q.cat==='wa' && q.note==='Ocean')) cands.push(q); }
+  for(const p of PLACES){ if(p.pop>=30000) cands.push({cat:'city',name:p.name,lat:p.lat,lon:p.lon,pop:p.pop,note:p.adm1&&p.cc==='US'?stAbbr(p.adm1):'',mz:p.mz}); }
+  const coslat=Math.cos(pos.lat*D2R), spd=Math.max(pos.spd||0,1), seen=new Set();
+  const maxR=Math.min(G.horizon,160000);
+  for(const q of cands){
+    const dy=(q.lat-pos.lat)*111195, dx=(q.lon-pos.lon)*111195*coslat;
+    if(Math.abs(dy)>maxR) continue;
+    const d=Math.hypot(dx,dy); if(d>maxR) continue;
+    if(dark && q.cat!=='city') continue;
+    const lim=Math.min(visRange(q)*(dark?0.8:1), G.horizon);
+    const key=q.name; 
+    const b=(Math.atan2(dx,dy)*R2D+360)%360;
+    const dep=Math.atan2(h,d)*R2D + d/(2*6371000)*R2D;
+    const it={q,d,b,dep,lim,score:catWeight(q)*lim/Math.max(d,G.rMin)};
+    if(out.noTrack){ if(d>=G.rMin && d<=lim){ it.side='?'; it.how=card(b)+' · '+lookWords(dep); out.right.push(it);} continue; }
+    const rel=(b-pos.trk+360)%360, along=d*Math.cos(rel*D2R), cross=d*Math.sin(rel*D2R);
+    const side = cross>=0?'R':'L', a = side==='R'?rel:360-rel;
+    it.side=side;
+    if(d<G.rMin){ it.how='directly below'; out.under.push(it); continue; }
+    if(d<=lim && a>=SIDE_LO && a<=SIDE_HI){ it.how=lookWords(dep)+', '+foreAft(a); (side==='R'?out.right:out.left).push(it); continue; }
+    if(along>0 && d<=lim*1.6){
+      const ac=Math.abs(cross);
+      if(ac<G.rMin){ const t=along/spd; if(t<900 && catWeight(q)>=1 && lim>=30000){ it.eta=t; it.how='will pass under the plane, hidden'; out.under.push(it);} }
+      else if(ac<=lim){ const t=(along-ac/Math.tan(SIDE_LO*D2R))/spd; if(t>0 && t<1200){ it.eta=t; it.how=(side==='R'?'right':'left')+' window'; out.soon.push(it);} }
+    }
+  }
+  const pick=(arr,n,by)=>{ arr.sort(by); const r=[]; for(const x of arr){ if(seen.has(x.q.name)) continue; seen.add(x.q.name); r.push(x); if(r.length>=n) break; } return r; };
+  out.left=pick(out.left,6,(a,b)=>b.score-a.score); out.right=pick(out.right,6,(a,b)=>b.score-a.score);
+  out.soon=pick(out.soon,5,(a,b)=>a.eta-b.eta); out.under=pick(out.under,3,(a,b)=>(a.eta||0)-(b.eta||0));
+  WV=out;
+}
+function catColorOf(q){ return q.cat==='city'?C.label:q.cat==='wa'?C.wlabel:poiColor(q.cat); }
+function fmtAlt(m){ return units==='km'? Math.round(m).toLocaleString()+' m' : (Math.round(m*3.28084/100)*100).toLocaleString()+' ft'; }
+function mins(t){ return t<90?'<2 min':Math.round(t/60)+' min'; }
+function renderWin(){
+  if($('win').hidden) return;
+  for(const b of document.querySelectorAll('#seat .pill')) b.setAttribute('aria-pressed', b.dataset.s===seat);
+  const box=$('wLists'); box.textContent='';
+  if(!WV){ $('wNote').textContent='Waiting for a GPS position.'; return; }
+  const G=WV.G;
+  $('wH').textContent=(G.est?'~':'')+fmtAlt(G.h); $('wHz').textContent=fmtDist(G.horizon);
+  $('wMin').textContent='within '+fmtDist(G.rMin); $('wMax').textContent='~'+fmtDist(G.practical);
+  let note=''; if(G.est) note+='No altitude from GPS yet, so height is estimated from speed. ';
+  if(G.h<100) note+='On the ground, so nothing to look out for yet. ';
+  if(WV.dark) note+='It is dark outside, so only city lights are listed. ';
+  if(WV.noTrack) note+='Heading not known yet, so sights are listed by compass direction. ';
+  $('wNote').textContent=note; $('wNote').hidden=!note;
+  const sec=(title,sub,items,fmt)=>{
+    const wrap=document.createElement('div'); const h=document.createElement('h2'); h.textContent=title; if(sub){ const s=document.createElement('span'); s.textContent=sub; h.appendChild(s);} wrap.appendChild(h);
+    const l=document.createElement('div'); l.className='wlist';
+    if(!items.length){ const n=document.createElement('div'); n.className='wnone'; n.textContent='Nothing mapped here right now'; l.appendChild(n); }
+    for(const it of items){ const r=document.createElement('div'); r.className='wrow'; const i=document.createElement('i'); i.style.background=catColorOf(it.q); const b=document.createElement('b'); b.textContent=it.q.name; const d=document.createElement('span'); d.className='d mono'; const [dv,hv]=fmt(it); d.textContent=dv; const hh=document.createElement('div'); hh.className='h'; hh.textContent=hv; r.append(i,b,d,hh); l.appendChild(r); }
+    wrap.appendChild(l); box.appendChild(wrap);
+  };
+  const kindOf=q=>q.cat==='city'?'City'+(q.note?', '+q.note:''):q.cat==='wa'?q.note:CATNAME[q.cat];
+  const vis=it=>[fmtDist(it.d), kindOf(it.q)+' · '+it.how];
+  if(WV.noTrack){ sec('In view','',WV.right,vis); }
+  else {
+    const order = seat==='R'?['R','L']:['L','R'];
+    for(const sd of order){ if(seat!=='B' && sd!==seat) continue; sec(sd==='L'?'Left window':'Right window', '', sd==='L'?WV.left:WV.right, vis); }
+    const soon = seat==='B'?WV.soon:WV.soon.filter(x=>x.side===seat);
+    sec('Coming up', seat==='B'?'':'your side', soon, it=>['in '+mins(it.eta), kindOf(it.q)+' · '+it.how+', '+fmtDist(it.d)+' away']);
+    sec('Under the plane', 'hidden from view', WV.under, it=>[it.eta!=null?'in '+mins(it.eta):fmtDist(it.d), kindOf(it.q)+' · '+it.how]);
+  }
+}
+function openWin(){ $('scrim').hidden=false; $('win').hidden=false; scanWindow(); renderWin(); }
+function closeWin(){ $('scrim').hidden=true; $('win').hidden=true; }
+
 /* ---------- position handling ---------- */
 let lastFixForTrack=null, lastTrailT=0, lastRegionT=0, source='none';
 function onFix(f){
@@ -554,26 +708,22 @@ function updateWhere(){
   if(best && bd<400000) parts.push(phrase(best,bd));
   if(bigBest && bigBest!==best && bbd<500000) parts.push(phrase(bigBest,bbd));
   $('near').textContent = parts.length? parts.join(' · ') : 'Far from any mapped town';
-  // look out the window
-  const radius = 40000, cand=[], seenN=new Set();
-  for(const q of POIS){
-    if(!catOn(q.cat) || q.mz>8 || Math.abs(q.lat-pos.lat)>0.5) continue;
-    if(q.cat==='wa' && (q.mz<=4 || q.note==='Sea' || q.note==='Ocean')) continue;
-    const d=dist(pos.lat,pos.lon,q.lat,q.lon); if(d>radius) continue;
-    if(q.cat==='wa' && q.note==='River' && d>6000) continue;
-    cand.push([d*(1+q.mz/4)*(q.cat==='lm'||q.cat==='np'?0.7:1), d, q]);
-  }
-  cand.sort((a,b)=>a[0]-b[0]);
+  // look out the window (summary of the window model)
+  scanWindow();
   const look=$('look'); look.textContent='';
-  const picks=[]; for(const c of cand){ if(seenN.has(c[2].name)) continue; seenN.add(c[2].name); picks.push(c); if(picks.length===2) break; }
-  for(const [,d,q] of picks){
-    const b=brg(pos.lat,pos.lon,q.lat,q.lon); let side='';
-    if(pos.trk!=null){ const rel=(b-pos.trk+360)%360; side = d<2500?'Below':rel<30||rel>330?'Ahead':rel>135&&rel<225?'Behind':rel<180?'Right':'Left'; }
-    else side = d<2500?'Below':card(b);
-    const row=document.createElement('div'); const bb=document.createElement('b'); bb.textContent=side.toUpperCase()+' ';
-    row.append(bb, document.createTextNode(q.name+' · '+fmtDist(d))); look.appendChild(row);
-  }
-  look.hidden = !cand.length;
+  const rows=[];
+  if(WV && !WV.noTrack){
+    const sides = seat==='B'?['L','R']:[seat];
+    const best = sides.map(sd=>(sd==='L'?WV.left:WV.right)[0]).filter(Boolean);
+    for(const it of best) rows.push([it.side==='L'?'LEFT':'RIGHT', it.q.name+' · '+fmtDist(it.d)]);
+    const up=(seat==='B'?WV.soon:WV.soon.filter(x=>x.side===seat))[0];
+    if(rows.length<2 && up) rows.push(['SOON', up.q.name+' · '+(up.side==='L'?'left':'right')+' in '+mins(up.eta)]);
+    const un=WV.under.find(x=>x.eta==null);
+    if(rows.length<2 && un) rows.push(['BELOW', un.q.name+' · hidden under the plane']);
+  } else if(WV && WV.right.length){ const it=WV.right[0]; rows.push([card(it.b), it.q.name+' · '+fmtDist(it.d)]); }
+  for(const [k,t] of rows){ const row=document.createElement('div'); const bb=document.createElement('b'); bb.textContent=k+' '; row.append(bb, document.createTextNode(t)); look.appendChild(row); }
+  look.hidden = !rows.length;
+  renderWin();
 }
 const ST = {}; for(const s of D.states){ if(s[2] && s[2][1]) ST[s[2][0]]=s[2][1]; }
 function stAbbr(n){ return ST[n]||n; }
@@ -645,6 +795,7 @@ $('demoBtn').onclick=()=>{ if(watchId!=null){ navigator.geolocation.clearWatch(w
 /* ---------- sheet ---------- */
 function openSheet(){ $('scrim').hidden=false; $('sheet').hidden=false; renderResults(); }
 function closeSheet(){ $('scrim').hidden=true; $('sheet').hidden=true; }
+$('winBtn').onclick=openWin; $('winClose').onclick=closeWin; $('scrim').addEventListener('click',closeWin);
 $('menu').onclick=openSheet; $('close').onclick=closeSheet; $('scrim').onclick=closeSheet;
 function renderResults(){
   const q=$('q').value.trim().toLowerCase(); const box=$('results'); box.textContent='';
@@ -669,6 +820,10 @@ for(const b of document.querySelectorAll('#units .pill')) b.onclick=()=>{ units=
 function markUnits(){ for(const b of document.querySelectorAll('#units .pill')) b.setAttribute('aria-pressed', b.dataset.u===units); }
 for(const b of document.querySelectorAll('#themes .pill')) b.onclick=()=>{ theme=b.dataset.t; store.set('theme',theme); applyTheme(); };
 markUnits();
+for(const b of document.querySelectorAll('#seat .pill')) b.onclick=()=>{ seat=b.dataset.s; store.set('seat',seat); updateWhere(); renderWin(); dirty=true; };
+function markZones(){ $('zonesBtn').setAttribute('aria-pressed', !!zonesOn); }
+$('zonesBtn').onclick=()=>{ zonesOn=zonesOn?0:1; store.set('zones',zonesOn); markZones(); dirty=true; };
+markZones();
 function markLayers(){ for(const b of document.querySelectorAll('#layers .pill')) b.setAttribute('aria-pressed', !!layersOn[b.dataset.l]); }
 for(const b of document.querySelectorAll('#layers .pill')) b.onclick=()=>{ layersOn[b.dataset.l]=layersOn[b.dataset.l]?0:1; store.set('layers',layersOn); markLayers(); updateWhere(); dirty=true; };
 markLayers();
