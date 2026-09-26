@@ -20,7 +20,7 @@
   --road:#8c8a80; --road2:#b5b2a6; --border:#6b5b7b; --state:#a79bb3;
   --label:#1f2a30; --halo:rgba(233,236,217,.9); --airport:#1c5fa8; --course:#b0287a;
   --ship:#f2b632; --shipline:#1b1b1b; --trail:#b0287a;
-  --park:#7fb069; --sport:#c2410c; --golf:#2e7d32; --lm:#0f766e; --peak:#7c5a3a; --wlabel:#2a6f97;
+  --park:#7fb069; --sport:#c2410c; --golf:#2e7d32; --lm:#0f766e; --peak:#7c5a3a; --wlabel:#2a6f97; --saved:#2459c4;
   --ui:#f6f7f1; --ui2:#ffffff; --uitext:#1b262d; --uimuted:#5d6b73; --uiline:#d6dac9;
   --good:#1d8a4e; --warn:#b7791f; --bad:#b83b3b; --accent:#b0287a;
   color-scheme:light;
@@ -30,7 +30,7 @@
   --road:#4a5a66; --road2:#33414b; --border:#8a7aa0; --state:#4d4a63;
   --label:#d7e2e9; --halo:rgba(10,22,32,.85); --airport:#6fb0ff; --course:#e24fb0;
   --ship:#ffcc33; --shipline:#000; --trail:#e24fb0;
-  --park:#2f5a3a; --sport:#ff8a4c; --golf:#5cc46a; --lm:#3fd0bf; --peak:#c9a27a; --wlabel:#7bbde0;
+  --park:#2f5a3a; --sport:#ff8a4c; --golf:#5cc46a; --lm:#3fd0bf; --peak:#c9a27a; --wlabel:#7bbde0; --saved:#6ea8ff;
   --ui:#0f1b24; --ui2:#142430; --uitext:#e3ebf0; --uimuted:#8ea1ad; --uiline:#243847;
   --good:#3ccf7d; --warn:#f0b43c; --bad:#ff6b6b; --accent:#e24fb0;
   color-scheme:dark;
@@ -38,6 +38,7 @@
 html,body{height:100%;margin:0;overflow:hidden;background:var(--water);color:var(--uitext);
   font-family:"B612",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 #map{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
 .mono{font-family:"B612 Mono",ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
 button{font:inherit;color:inherit}
@@ -67,6 +68,20 @@ button{font:inherit;color:inherit}
 .wnone{font-size:13px;color:var(--uimuted);padding:6px 0}
 .wnote{font-size:12px;color:var(--uimuted);line-height:1.5;margin:0}
 #card{pointer-events:auto;background:var(--ui);border:1px solid var(--uiline);border-radius:10px;padding:8px 12px;max-width:min(520px,100%);box-shadow:0 2px 10px rgba(0,0,0,.18)}
+#viewing{pointer-events:auto;display:inline-flex;align-items:center;gap:10px;background:var(--saved);color:#fff;border-radius:999px;padding:5px 6px 5px 12px;font-size:12.5px;max-width:100%}
+#viewing span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#viewing button{border:0;background:rgba(255,255,255,.22);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;cursor:pointer}
+.ftot{font-size:13px;color:var(--uitext);line-height:1.5;margin:0 0 6px}
+.flist{display:flex;flex-direction:column}
+.frow{border-bottom:1px solid var(--uiline);padding:10px 0;display:flex;flex-direction:column;gap:3px}
+.frow .t{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.frow b{font-size:15px}
+.frow .dt{font-size:12px;color:var(--uimuted);white-space:nowrap}
+.frow .m{font-size:12.5px;color:var(--uimuted)}
+.frow .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.frow .acts button{border:1px solid var(--uiline);background:var(--ui2);border-radius:999px;padding:5px 11px;font-size:12.5px;cursor:pointer}
+.frow .acts button.warn{border-color:var(--bad);color:var(--bad)}
+.frow input{font:inherit;font-size:15px;padding:6px 8px;border-radius:8px;border:1px solid var(--uiline);background:var(--ui2);color:var(--uitext);width:100%}
 #cardT{font-weight:700;font-size:14px}#cardS{font-size:12px;color:var(--uimuted);margin-top:2px}
 #layers .pill[aria-pressed="true"]{background:var(--ui2);color:var(--uitext);border-color:var(--uitext);font-weight:700}
 #layers .pill[aria-pressed="false"]{opacity:.55;text-decoration:line-through}
@@ -125,6 +140,7 @@ button{font:inherit;color:inherit}
 <div id="top">
   <div id="status" class="warn" role="status"><i></i><span id="stxt">Finding GPS…</span><button id="useGps" hidden>Use GPS</button></div>
   <div id="where"><div id="over">—</div><div id="near">Waiting for position</div><div id="look" hidden></div></div>
+  <div id="viewing" hidden><span id="viewingTxt"></span><button id="viewingClose">Back to live</button></div>
   <div id="card" hidden><div id="cardT"></div><div id="cardS"></div></div>
 </div>
 
@@ -160,11 +176,16 @@ button{font:inherit;color:inherit}
       <button class="pill" data-s="R">Right window</button>
       <button class="pill" data-s="B">Both sides</button>
     </div>
+    <div class="row" id="visRow">
+      <button class="pill" data-v="clear">Clear day</button>
+      <button class="pill" data-v="typ">Typical</button>
+      <button class="pill" data-v="hazy">Hazy</button>
+    </div>
     <div class="wstats">
       <div><div class="k">Height</div><div class="v mono" id="wH">—</div></div>
       <div><div class="k">Horizon</div><div class="v mono" id="wHz">—</div></div>
       <div><div class="k">Hidden under plane</div><div class="v mono" id="wMin">—</div></div>
-      <div><div class="k">Clear-day detail</div><div class="v mono" id="wMax">—</div></div>
+      <div><div class="k">You can see about</div><div class="v mono" id="wMax">—</div></div>
     </div>
     <p class="wnote" id="wNote"></p>
     <div id="wLists"></div>
@@ -208,6 +229,14 @@ button{font:inherit;color:inherit}
         <button class="pill" data-t="night">Night cabin</button>
         <button class="pill" id="zonesBtn">Window zones on map</button>
       </div>
+    </div>
+    <div>
+      <h2>My flights</h2>
+      <p class="ftot" id="fTotals">No saved flights yet.</p>
+      <div class="row"><button class="pill" id="saveFlight">Save current flight</button><button class="pill" id="showAll">Show all on map</button></div>
+      <div class="flist" id="fList"></div>
+      <div class="row" style="margin-top:10px"><button class="pill" id="exportF">Export backup</button><label class="pill" for="importF" style="cursor:pointer">Import backup</label><input type="file" id="importF" accept="application/json,.json" hidden></div>
+      <p style="margin-top:8px;font-size:12px" id="fMsg">Flights are saved only on this phone. A flight saves itself when you start the app again after a break of 3 hours or more. Export a backup now and then, because clearing your browser data erases them.</p>
     </div>
     <div>
       <h2>Trail</h2>
@@ -292,7 +321,7 @@ function fmtDist(m){ const u=U[units]; const v=u.d(m); return (v<10? v.toFixed(1
 let theme = store.get('theme', matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day');
 function applyTheme(){ document.documentElement.dataset.map = theme; document.querySelector('meta[name=theme-color]').content = theme==='night'?'#0b1620':'#e9ecd9'; readColors(); for(const b of document.querySelectorAll('#themes .pill')) b.setAttribute('aria-pressed', b.dataset.t===theme); dirty=true; }
 let C = {};
-function readColors(){ const cs = getComputedStyle(document.documentElement); for(const k of ['water','land','urban','lake','river','road','road2','border','state','label','halo','airport','course','ship','shipline','trail','park','sport','golf','lm','peak','wlabel']) C[k]=cs.getPropertyValue('--'+k).trim(); }
+function readColors(){ const cs = getComputedStyle(document.documentElement); for(const k of ['water','land','urban','lake','river','road','road2','border','state','label','halo','airport','course','ship','shipline','trail','park','sport','golf','lm','peak','wlabel','saved']) C[k]=cs.getPropertyValue('--'+k).trim(); }
 
 /* ---------- view ---------- */
 const cv = $('map'), ctx = cv.getContext('2d');
@@ -369,7 +398,7 @@ function draw(){
   pathParts(L.countryLines, vb, false); ctx.strokeStyle=C.border; ctx.lineWidth= z>=6?2:1.4; ctx.stroke();
 
   labelBoxes=[];
-  for(const id of ['ctl','where','status','tape','scale','card','win']){ const r=$(id).getBoundingClientRect(); if(r.width) labelBoxes.push([r.left-4,r.top-4,r.width+8,r.height+8]); }
+  for(const id of ['ctl','where','status','tape','scale','card','win','viewing']){ const r=$(id).getBoundingClientRect(); if(r.width) labelBoxes.push([r.left-4,r.top-4,r.width+8,r.height+8]); }
   // reserve space for ownship
   if(pos){ const [px,py]=toScreen(mx(pos.lon),my(pos.lat)); labelBoxes.push([px-22,py-22,44,44]); }
 
@@ -381,6 +410,20 @@ function draw(){
       ctx.beginPath(); let prev=null;
       for(const [la,lo] of pts){ const [sx,sy]=toScreen(mx(lo),my(la)); if(prev && Math.abs(sx-prev)>W) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy); prev=sx; }
       ctx.strokeStyle=C.course; ctx.lineWidth=3; ctx.globalAlpha=0.9; ctx.stroke(); ctx.globalAlpha=1;
+    }
+  }
+  // saved flights being viewed
+  if(viewFlights.length){
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    for(const fl of viewFlights){
+      const pts=fl.pts; if(pts.length<2) continue;
+      ctx.beginPath(); let prevX=null;
+      for(let i=0;i<pts.length;i++){ const [sx,sy]=toScreen(mx(pts[i][1]),my(pts[i][0])); if(i===0 || (prevX!=null && Math.abs(sx-prevX)>W)) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy); prevX=sx; }
+      ctx.strokeStyle=C.halo; ctx.lineWidth=6; ctx.stroke(); ctx.strokeStyle=C.saved; ctx.lineWidth=3; ctx.stroke();
+      for(const [pt,txt] of [[pts[0],fl.from],[pts[pts.length-1],fl.to]]){
+        const [sx,sy]=toScreen(mx(pt[1]),my(pt[0])); ctx.beginPath(); ctx.arc(sx,sy,5,0,TAU); ctx.fillStyle=C.saved; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=C.halo; ctx.stroke();
+        label(txt, sx, sy, '700 11px "B612 Mono", ui-monospace, monospace', C.saved, 8, 0);
+      }
     }
   }
   // trail
@@ -458,7 +501,9 @@ function draw(){
     const [px,py]=toScreen(mx(pos.lon),my(pos.lat));
     if(zonesOn && WV && !WV.noTrack && WV.G.h>=100){
       const mpp=40075016.686*Math.cos(pos.lat*D2R)/scale(), G=WV.G;
-      const r0=G.rMin/mpp, r1=Math.min(G.practical,160000)/mpp;
+      zoneTarget=[G.rMin, G.practical];
+      if(!zoneShown) zoneShown=[G.rMin, G.practical];
+      const r0=zoneShown[0]/mpp, r1=zoneShown[1]/mpp;
       const sides = seat==='B'?['L','R']:[seat];
       for(const sd of ['L','R']){
         const on=sides.includes(sd);
@@ -467,6 +512,8 @@ function draw(){
         ctx.beginPath(); ctx.arc(px,py,r1,c0,c1); ctx.arc(px,py,Math.max(r0,1),c1,c0,true); ctx.closePath();
         ctx.fillStyle=C.ship; ctx.globalAlpha=on?0.13:0.05; ctx.fill(); ctx.globalAlpha=on?0.55:0.25; ctx.strokeStyle=C.ship; ctx.lineWidth=1; ctx.stroke(); ctx.globalAlpha=1;
       }
+      { const sd = seat==='L'?'L':'R'; const ang=(pos.trk+(sd==='R'?90:-90)-90)*D2R; const lx=px+Math.cos(ang)*r1, ly=py+Math.sin(ang)*r1;
+        if(r1>40) label(fmtDist(zoneShown[1]), lx, ly, '700 11px "B612 Mono", ui-monospace, monospace', C.shipline, 0, 0, 'center'); }
       if(r0>6){ ctx.beginPath(); ctx.arc(px,py,r0,0,TAU); ctx.setLineDash([3,4]); ctx.strokeStyle=C.shipline; ctx.globalAlpha=0.45; ctx.lineWidth=1.2; ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1; }
     }
     // accuracy ring
@@ -517,7 +564,11 @@ function drawScale(){
 }
 
 /* ---------- loop ---------- */
-function frame(){ if(dirty) draw(); requestAnimationFrame(frame); }
+let zoneShown=null, zoneTarget=null;
+function frame(){
+  if(zoneShown && zoneTarget){ let moving=false; for(let i=0;i<2;i++){ const d=zoneTarget[i]-zoneShown[i]; if(Math.abs(d)>Math.max(20,zoneTarget[i]*0.003)){ zoneShown[i]+=d*0.12; moving=true; } else zoneShown[i]=zoneTarget[i]; } if(moving) dirty=true; }
+  if(dirty) draw(); requestAnimationFrame(frame);
+}
 
 /* ---------- interaction ---------- */
 const pts = new Map(); let lastPinch=null, lastTap=0, moved=false;
@@ -564,19 +615,160 @@ function identify(px,py){
   clearTimeout(cardT); cardT=setTimeout(()=>{ $('card').hidden=true; dirty=true; }, 6000);
 }
 
+/* ---------- saved flights (on this device) ---------- */
+let viewFlights=[], flightsCache=[];
+const FDB = (()=>{
+  let dbp=null;
+  function open(){ if(dbp) return dbp; dbp=new Promise((res,rej)=>{ try{ const r=indexedDB.open('windowseat',1); r.onupgradeneeded=()=>r.result.createObjectStore('flights',{keyPath:'id'}); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); return dbp; }
+  const lsGet=()=>store.get('flights',[]), lsSet=v=>store.set('flights',v);
+  async function tx(mode,fn){ const db=await open(); return new Promise((res,rej)=>{ const t=db.transaction('flights',mode); const st=t.objectStore('flights'); const out=fn(st); t.oncomplete=()=>res(out&&out.result!==undefined?out.result:undefined); t.onerror=()=>rej(t.error); }); }
+  return {
+    async all(){ try{ const db=await open(); return await new Promise((res,rej)=>{ const r=db.transaction('flights').objectStore('flights').getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); }); }catch(e){ return lsGet(); } },
+    async put(f){ try{ await tx('readwrite',st=>st.put(f)); }catch(e){ const a=lsGet().filter(x=>x.id!==f.id); a.push(f); lsSet(a); } },
+    async del(id){ try{ await tx('readwrite',st=>st.delete(id)); }catch(e){ lsSet(lsGet().filter(x=>x.id!==id)); } }
+  };
+})();
+try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+function nearestName(lat,lon){
+  let ba=null,bd=Infinity; for(const a of AIRPORTS){ if(Math.abs(a.lat-lat)>1) continue; const d=dist(lat,lon,a.lat,a.lon); if(d<bd){bd=d;ba=a;} }
+  if(ba && bd<35000) return {code:ba.code||ba.icao, name:ba.name};
+  let bp=null,bpd=Infinity; for(const p of PLACES){ if(Math.abs(p.lat-lat)>2) continue; const d=dist(lat,lon,p.lat,p.lon); if(d<bpd){bpd=d;bp=p;} }
+  return bp?{code:bp.name, name:bp.name}:{code:lat.toFixed(2)+', '+lon.toFixed(2), name:''};
+}
+function summarize(pts){
+  let len=0; for(let i=1;i<pts.length;i++) len+=dist(pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1]);
+  const t0=pts[0][2]||null, t1=pts[pts.length-1][2]||null;
+  let maxAlt=null; for(const p of pts){ if(p[3]!=null && (maxAlt==null||p[3]>maxAlt)) maxAlt=p[3]; }
+  const states=[], countries=[];
+  for(let i=0;i<pts.length;i+=Math.max(1,Math.floor(pts.length/150))){
+    const [la,lo]=pts[i]; const st=regionAt(STATES,lo,la); const c=regionAt(COUNTRIES,lo,la);
+    if(st && st[1] && !states.includes(st[1])) states.push(st[1]);
+    if(c && !countries.includes(c)) countries.push(c);
+  }
+  const a=nearestName(pts[0][0],pts[0][1]), b=nearestName(pts[pts.length-1][0],pts[pts.length-1][1]);
+  return {len, t0, t1, maxAlt, states, countries, from:a.code, to:b.code, fromName:a.name, toName:b.name};
+}
+async function saveTrailAsFlight(auto){
+  const pts=trail.filter(p=>p && p.length>=2);
+  if(pts.length<3){ flightMsg('Not enough of a track to save yet.'); return false; }
+  const sm=summarize(pts);
+  if(sm.len<15000){ if(!auto) flightMsg('This track is under 10 miles, so it was not saved.'); if(auto){ trail=[]; store.set('trail',[]); } return false; }
+  const f=Object.assign({id:'f'+Date.now().toString(36), name:'', saved:Date.now(), pts}, sm);
+  trail=[]; store.set('trail',[]); lastTrailT=0; dirty=true;
+  await FDB.put(f);
+  flightMsg((auto?'Your last flight was saved: ':'Saved: ')+f.from+' → '+f.to+'.');
+  renderFlights();
+  return true;
+}
+let fMsgT=0;
+function flightMsg(t){ const m=$('fMsg'); if(!m.dataset.base) m.dataset.base=m.textContent; m.textContent=t; clearTimeout(fMsgT); fMsgT=setTimeout(()=>{ m.textContent=m.dataset.base; },7000); }
+function fmtDur(s){ if(!s||s<0) return ''; const h=Math.floor(s/3600), m=Math.round((s%3600)/60); return (h?h+'h ':'')+m+'m'; }
+function fmtDate(t){ return t? new Date(t*1000).toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'}) : ''; }
+async function renderFlights(){
+  const list=$('fList'); if(!list) return;
+  flightsCache=(await FDB.all()).sort((a,b)=>(b.t0||b.saved/1000)-(a.t0||a.saved/1000));
+  list.textContent='';
+  const tot=$('fTotals');
+  if(!flightsCache.length){ tot.textContent='No saved flights yet.'; $('showAll').hidden=true; }
+  else {
+    $('showAll').hidden=false;
+    let len=0,secs=0; const st=new Set();
+    for(const f of flightsCache){ len+=f.len||0; if(f.t0&&f.t1) secs+=f.t1-f.t0; (f.states||[]).forEach(x=>st.add(x)); }
+    tot.textContent=flightsCache.length+' flight'+(flightsCache.length>1?'s':'')+' · '+fmtDist(len)+(secs?' · '+fmtDur(secs)+' in the air':'')+(st.size?' · flew over '+st.size+' state'+(st.size>1?'s':''):'');
+  }
+  for(const f of flightsCache){
+    const row=document.createElement('div'); row.className='frow';
+    const t=document.createElement('div'); t.className='t';
+    const b=document.createElement('b'); b.textContent=f.name || (f.from+' → '+f.to);
+    const dt=document.createElement('span'); dt.className='dt'; dt.textContent=fmtDate(f.t0||Math.round(f.saved/1000));
+    t.append(b,dt);
+    const m=document.createElement('div'); m.className='m';
+    const bits=[fmtDist(f.len||0)]; if(f.t0&&f.t1) bits.push(fmtDur(f.t1-f.t0)); if(f.maxAlt) bits.push('max '+(units==='km'?Math.round(f.maxAlt/3.28084).toLocaleString()+' m':f.maxAlt.toLocaleString()+' ft'));
+    if(f.name) bits.unshift(f.from+' → '+f.to);
+    m.textContent=bits.join(' · ');
+    const m2=document.createElement('div'); m2.className='m';
+    if(f.states && f.states.length) m2.textContent='Over '+f.states.join(', '); else if(f.countries && f.countries.length) m2.textContent='Over '+f.countries.join(', ');
+    const acts=document.createElement('div'); acts.className='acts';
+    const bv=document.createElement('button'); bv.textContent='Show on map'; bv.onclick=()=>{ showFlights([f], f.name||(f.from+' → '+f.to)); closeSheet(); };
+    const br=document.createElement('button'); br.textContent='Rename';
+    br.onclick=()=>{ const inp=document.createElement('input'); inp.value=f.name||''; inp.placeholder=f.from+' → '+f.to; const ok=document.createElement('button'); ok.textContent='Save name'; ok.onclick=async()=>{ f.name=inp.value.trim(); await FDB.put(f); renderFlights(); }; acts.replaceChildren(ok); row.insertBefore(inp, acts); inp.focus(); };
+    const bd=document.createElement('button'); bd.textContent='Delete';
+    bd.onclick=()=>{ const yes=document.createElement('button'); yes.className='warn'; yes.textContent='Delete this flight'; const no=document.createElement('button'); no.textContent='Keep'; yes.onclick=async()=>{ await FDB.del(f.id); viewFlights=viewFlights.filter(x=>x.id!==f.id); if(!viewFlights.length) hideFlights(); renderFlights(); dirty=true; }; no.onclick=()=>renderFlights(); acts.replaceChildren(yes,no); };
+    acts.append(bv,br,bd);
+    row.append(t,m); if(m2.textContent) row.append(m2); row.append(acts);
+    list.appendChild(row);
+  }
+}
+function showFlights(arr, title){
+  if(!arr.length) return;
+  viewFlights=arr; setFollow(false);
+  let x0=1,x1=0,y0=1,y1=0;
+  for(const f of arr) for(const p of f.pts){ const x=mx(p[1]), y=my(p[0]); if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+  const top=$('where').getBoundingClientRect().bottom+60, bot=$('tape').getBoundingClientRect().top-30;
+  const ux0=30, ux1=W-90, uy0=Math.min(top,H*0.45), uy1=Math.max(bot,uy0+100);
+  const dx=Math.max(x1-x0,1e-5), dy=Math.max(y1-y0,1e-5);
+  view.z=Math.min(10, Math.log2(Math.min((ux1-ux0)/(dx*256), (uy1-uy0)/(dy*256))));
+  const sc=256*Math.pow(2,view.z);
+  view.cx=(x0+x1)/2-((ux0+ux1)/2-W/2)/sc; view.cy=(y0+y1)/2-((uy0+uy1)/2-H/2)/sc; clampView();
+  $('viewingTxt').textContent=title; $('viewing').hidden=false; dirty=true;
+}
+function hideFlights(){ viewFlights=[]; $('viewing').hidden=true; setFollow(true); dirty=true; }
+$('viewingClose').onclick=hideFlights;
+$('saveFlight').onclick=()=>{ if(source==='demo'){ flightMsg('The demo flight is not saved. Use GPS on a real flight.'); return; } saveTrailAsFlight(false); };
+$('showAll').onclick=()=>{ if(flightsCache.length){ showFlights(flightsCache, flightsCache.length+' saved flight'+(flightsCache.length>1?'s':'')); closeSheet(); } };
+$('exportF').onclick=async()=>{
+  const all=await FDB.all(); if(!all.length){ flightMsg('No flights to export yet.'); return; }
+  const blob=new Blob([JSON.stringify({app:'Window Seat',version:1,exported:new Date().toISOString(),flights:all})],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='window-seat-flights-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+  flightMsg('Exported '+all.length+' flight'+(all.length>1?'s':'')+'. Keep the file somewhere safe, like iCloud Drive or Google Drive.');
+};
+$('importF').onchange=async e=>{
+  const file=e.target.files[0]; if(!file) return;
+  try{
+    const data=JSON.parse(await file.text()); const arr=Array.isArray(data)?data:data.flights;
+    if(!Array.isArray(arr)) throw new Error('bad');
+    let n=0; for(const f of arr){ if(f && f.id && Array.isArray(f.pts) && f.pts.length>1){ if(f.len==null || !f.from) Object.assign(f, summarize(f.pts), f.name?{name:f.name}:{}); await FDB.put(f); n++; } }
+    flightMsg('Imported '+n+' flight'+(n===1?'':'s')+'.'); renderFlights();
+  }catch(err){ flightMsg('That file is not a Window Seat backup. Choose a file you exported from this app.'); }
+  e.target.value='';
+};
+
 /* ---------- window view model ---------- */
 const MAXDEP = 50;               // degrees below level a passenger can see from a window
 const SIDE_LO = 35, SIDE_HI = 145; // relative bearings visible out a side window
-const HAZE = 90000;              // meters of useful detail on a clear day
+const HAZE_TOP = 2000;           // meters: most haze sits in the lowest ~2 km of air
+const VIS = {clear:{v:60000,t:'Clear'}, typ:{v:25000,t:'Typical'}, hazy:{v:10000,t:'Hazy'}}; // ground-level visibility
+let visMode = store.get('vis','typ'); if(!VIS[visMode]) visMode='typ';
 let seat = store.get('seat','B'), zonesOn = store.get('zones', 1);
 let WV = null;                   // last scan result
-function heightNow(){
-  if(pos && pos.alt!=null && pos.alt>30) return {h:Math.max(30,pos.alt-150), est:false};
-  if(pos && (pos.spd||0)>120) return {h:10500, est:true};
-  if(pos && (pos.spd||0)>40) return {h:3000, est:true};
-  return {h:0, est:true};
+let altS=null, altT=0, vsS=0, lastAltWall=0;  // smoothed altitude (m), its time, vertical speed (m/s)
+function feedAltitude(alt,t){
+  if(alt==null || isNaN(alt)) return;
+  if(altS==null){ altS=alt; altT=t; vsS=0; return; }
+  const dt=Math.max(0.2,(t-altT)/1000); const prev=altS;
+  const k=Math.min(1, dt/4);                 // ~4 s smoothing to calm GPS jitter
+  altS += k*(alt-altS);
+  const vs=(altS-prev)/dt; vsS += Math.min(1,dt/8)*(vs-vsS);
+  altT=t;
 }
-function geomFor(h){ const horizon=3570*Math.sqrt(Math.max(h,1))*1.07; return {h, horizon, rMin:h/Math.tan(MAXDEP*D2R), practical:Math.min(horizon,HAZE)}; }
+function estFromSpeed(spd){ // rough climb/cruise profile when the phone gives no altitude
+  if(spd<45) return 0;
+  const f=Math.max(0,Math.min(1,(spd-60)/(225-60)));
+  return 600+f*f*9900;
+}
+function heightNow(){
+  if(pos && altS!=null && Date.now()-lastAltWall<60000) return {h:Math.max(0,altS-150), est:false, vs:vsS};
+  return {h: pos? estFromSpeed(pos.spd||0) : 0, est:true, vs:0};
+}
+function hazeRange(h){ // how far ground detail shows through the haze, looking down from height h
+  const V=VIS[visMode].v;
+  if(h<=HAZE_TOP) return Math.sqrt(Math.max(V*V-h*h,0));
+  const r=V*h/HAZE_TOP;           // only the part of the sight line inside the haze layer counts
+  return Math.sqrt(Math.max(r*r-h*h,0));
+}
+function horizonOf(h){ return 3570*Math.sqrt(Math.max(h,1))*1.07; }   // meters, with normal refraction
+function geomFor(h){ const horizon=horizonOf(h), see=hazeRange(h); return {h, horizon, see, rMin:h/Math.tan(MAXDEP*D2R), practical:Math.min(horizon,see)}; }
 function sunElev(lat,lon,date){
   const d=date/86400000+2440587.5-2451545.0, g=(357.529+0.98560028*d)*D2R, q=280.459+0.98564736*d;
   const L=(q+1.915*Math.sin(g)+0.020*Math.sin(2*g))*D2R, e=(23.439-0.00000036*d)*D2R;
@@ -585,16 +777,16 @@ function sunElev(lat,lon,date){
   return R2D*Math.asin(Math.sin(lat*D2R)*Math.sin(dec)+Math.cos(lat*D2R)*Math.cos(dec)*Math.cos(ha));
 }
 function visRange(q){
-  if(q.cat==='city') return q.pop>=1e6?120000:q.pop>=250000?85000:q.pop>=100000?60000:35000;
-  if(q.cat==='wa'){ const k=q.note; if(k==='Ocean'||k==='Sea'||k==='Great Lake') return 160000; if(k==='Bay'||k==='Sound'||k==='Lagoon') return 90000; if(k==='River') return q.mz<=6?45000:22000; return q.mz<=6?75000:40000; }
-  return {pk:140000,np:60000,sp:30000,st:q.mz<=6?32000:22000,rc:32000,go:15000,lm:q.mz<=5?45000:22000}[q.cat]||20000;
+  if(q.cat==='city') return q.pop>=1e6?160000:q.pop>=250000?110000:q.pop>=100000?75000:45000;
+  if(q.cat==='wa'){ const k=q.note; if(k==='Ocean'||k==='Sea'||k==='Great Lake') return 250000; if(k==='Bay'||k==='Sound'||k==='Lagoon') return 120000; if(k==='River') return q.mz<=6?60000:28000; return q.mz<=6?95000:50000; }
+  return {pk:200000,np:80000,sp:35000,st:q.mz<=6?40000:28000,rc:40000,go:18000,lm:q.mz<=5?60000:28000}[q.cat]||25000;
 }
 function catWeight(q){ return q.cat==='city'?(q.pop>=250000?1.3:1):q.cat==='lm'||q.cat==='np'||q.cat==='pk'?1.25:q.cat==='wa'?(q.note==='River'?0.8:1.15):1; }
 function lookWords(dep){ return dep>=40?'look steeply down':dep>=20?'look well down':dep>=8?'look down a little':'near the horizon'; }
 function foreAft(a){ return a<70?'toward the front':a>110?'toward the back':'straight out'; }
 function scanWindow(){
   if(!pos){ WV=null; return; }
-  const {h,est}=heightNow(); const G=geomFor(h); G.est=est;
+  const {h,est,vs}=heightNow(); const G=geomFor(h); G.est=est; G.vs=vs;
   const dark = sunElev(pos.lat,pos.lon,Date.now()) < -6;
   const out={G,dark,left:[],right:[],soon:[],under:[],noTrack:pos.trk==null};
   if(h<100){ WV=out; return; }
@@ -602,13 +794,15 @@ function scanWindow(){
   for(const q of POIS){ if(catOn(q.cat) && !(q.cat==='wa' && q.note==='Ocean')) cands.push(q); }
   for(const p of PLACES){ if(p.pop>=30000) cands.push({cat:'city',name:p.name,lat:p.lat,lon:p.lon,pop:p.pop,note:p.adm1&&p.cc==='US'?stAbbr(p.adm1):'',mz:p.mz}); }
   const coslat=Math.cos(pos.lat*D2R), spd=Math.max(pos.spd||0,1), seen=new Set();
-  const maxR=Math.min(G.horizon,160000);
+  const maxR=Math.min(horizonOf(h)+horizonOf(4000), 300000);
   for(const q of cands){
     const dy=(q.lat-pos.lat)*111195, dx=(q.lon-pos.lon)*111195*coslat;
     if(Math.abs(dy)>maxR) continue;
     const d=Math.hypot(dx,dy); if(d>maxR) continue;
     if(dark && q.cat!=='city') continue;
-    const lim=Math.min(visRange(q)*(dark?0.8:1), G.horizon);
+    const hz = q.cat==='pk' ? horizonOf(h)+horizonOf(+q.note||0) : G.horizon;   // tall peaks rise above the horizon
+    const lim = dark ? Math.min(hz, G.see*2, visRange(q)*1.3)                     // city lights carry farther at night
+                     : Math.min(hz, G.see*(q.cat==='pk'?1.3:1), visRange(q));
     const key=q.name; 
     const b=(Math.atan2(dx,dy)*R2D+360)%360;
     const dep=Math.atan2(h,d)*R2D + d/(2*6371000)*R2D;
@@ -639,9 +833,14 @@ function renderWin(){
   const box=$('wLists'); box.textContent='';
   if(!WV){ $('wNote').textContent='Waiting for a GPS position.'; return; }
   const G=WV.G;
-  $('wH').textContent=(G.est?'~':'')+fmtAlt(G.h); $('wHz').textContent=fmtDist(G.horizon);
-  $('wMin').textContent='within '+fmtDist(G.rMin); $('wMax').textContent='~'+fmtDist(G.practical);
-  let note=''; if(G.est) note+='No altitude from GPS yet, so height is estimated from speed. ';
+  for(const b of document.querySelectorAll('#visRow .pill')) b.setAttribute('aria-pressed', b.dataset.v===visMode);
+  const vsFpm = (G.vs||0)*196.85, trend = Math.abs(vsFpm)<300?'':vsFpm>0?' ▲':' ▼';
+  $('wH').textContent=(G.est?'~':'')+fmtAlt(G.h)+trend; $('wHz').textContent=fmtDist(G.horizon);
+  $('wMin').textContent='within '+fmtDist(G.rMin); $('wMax').textContent=fmtDist(G.practical);
+  let note='';
+  if(Math.abs(vsFpm)>=300) note+=(vsFpm>0?'Climbing':'Descending')+' about '+(Math.round(Math.abs(vsFpm)/100)*100).toLocaleString()+' ft/min, so your view is '+(vsFpm>0?'growing':'shrinking')+'. ';
+  if(G.est) note+='No altitude from GPS yet, so height is estimated from speed. ';
+  if(G.practical<G.horizon-1000 && G.h>=100) note+=VIS[visMode].t+' air limits detail to about '+fmtDist(G.practical)+', though the horizon is '+fmtDist(G.horizon)+' away. ';
   if(G.h<100) note+='On the ground, so nothing to look out for yet. ';
   if(WV.dark) note+='It is dark outside, so only city lights are listed. ';
   if(WV.noTrack) note+='Heading not known yet, so sights are listed by compass direction. ';
@@ -679,14 +878,35 @@ function onFix(f){
     else if(dt>30){ lastFixForTrack=f; }
   } else lastFixForTrack=f;
   if(trk==null && pos && pos.trk!=null && (spd||0)>5) trk=pos.trk;
+  if(source==='gps' && trail.length>1){ const lt=trail[trail.length-1][2]; if(lt && f.t/1000-lt>3*3600){ saveTrailAsFlight(true); } }
   pos={lat:f.lat,lon:f.lon,alt:f.alt,spd:spd,trk:trk,acc:f.acc,t:f.t};
+  if(f.alt!=null && !isNaN(f.alt)){ feedAltitude(f.alt, f.t); lastAltWall=Date.now(); }
   if(f.t-lastTrailT>15000 || trail.length===0){
     const last=trail[trail.length-1];
-    if(!last || dist(last[0],last[1],f.lat,f.lon)>300){ trail.push([+f.lat.toFixed(4),+f.lon.toFixed(4)]); if(trail.length>6000) trail.splice(0,trail.length-6000); lastTrailT=f.t; if(source==='gps') store.set('trail',trail); }
+    if(!last || dist(last[0],last[1],f.lat,f.lon)>300){ trail.push([+f.lat.toFixed(4),+f.lon.toFixed(4),Math.round(f.t/1000),altS!=null?Math.round(altS*3.28084/10)*10:null]); if(trail.length>6000) trail.splice(0,trail.length-6000); lastTrailT=f.t; if(source==='gps') store.set('trail',trail); }
   }
   if(follow){ view.cx=mx(pos.lon); view.cy=my(pos.lat); }
-  if(f.t-lastRegionT>4000){ lastRegionT=f.t; updateWhere(); }
+  if(f.t-lastRegionT>4000){ lastRegionT=f.t; updateWhere(); } else updateLook();
   updateTape(); dirty=true;
+}
+function updateLook(){
+  if(!pos) return;
+  // look out the window (summary of the window model)
+  scanWindow();
+  const look=$('look'); look.textContent='';
+  const rows=[];
+  if(WV && !WV.noTrack){
+    const sides = seat==='B'?['L','R']:[seat];
+    const best = sides.map(sd=>(sd==='L'?WV.left:WV.right)[0]).filter(Boolean);
+    for(const it of best) rows.push([it.side==='L'?'LEFT':'RIGHT', it.q.name+' · '+fmtDist(it.d)]);
+    const up=(seat==='B'?WV.soon:WV.soon.filter(x=>x.side===seat))[0];
+    if(rows.length<2 && up) rows.push(['SOON', up.q.name+' · '+(up.side==='L'?'left':'right')+' in '+mins(up.eta)]);
+    const un=WV.under.find(x=>x.eta==null);
+    if(rows.length<2 && un) rows.push(['BELOW', un.q.name+' · hidden under the plane']);
+  } else if(WV && WV.right.length){ const it=WV.right[0]; rows.push([card(it.b), it.q.name+' · '+fmtDist(it.d)]); }
+  for(const [k,t] of rows){ const row=document.createElement('div'); const bb=document.createElement('b'); bb.textContent=k+' '; row.append(bb, document.createTextNode(t)); look.appendChild(row); }
+  look.hidden = !rows.length;
+  renderWin();
 }
 function updateWhere(){
   if(!pos) return;
@@ -708,22 +928,7 @@ function updateWhere(){
   if(best && bd<400000) parts.push(phrase(best,bd));
   if(bigBest && bigBest!==best && bbd<500000) parts.push(phrase(bigBest,bbd));
   $('near').textContent = parts.length? parts.join(' · ') : 'Far from any mapped town';
-  // look out the window (summary of the window model)
-  scanWindow();
-  const look=$('look'); look.textContent='';
-  const rows=[];
-  if(WV && !WV.noTrack){
-    const sides = seat==='B'?['L','R']:[seat];
-    const best = sides.map(sd=>(sd==='L'?WV.left:WV.right)[0]).filter(Boolean);
-    for(const it of best) rows.push([it.side==='L'?'LEFT':'RIGHT', it.q.name+' · '+fmtDist(it.d)]);
-    const up=(seat==='B'?WV.soon:WV.soon.filter(x=>x.side===seat))[0];
-    if(rows.length<2 && up) rows.push(['SOON', up.q.name+' · '+(up.side==='L'?'left':'right')+' in '+mins(up.eta)]);
-    const un=WV.under.find(x=>x.eta==null);
-    if(rows.length<2 && un) rows.push(['BELOW', un.q.name+' · hidden under the plane']);
-  } else if(WV && WV.right.length){ const it=WV.right[0]; rows.push([card(it.b), it.q.name+' · '+fmtDist(it.d)]); }
-  for(const [k,t] of rows){ const row=document.createElement('div'); const bb=document.createElement('b'); bb.textContent=k+' '; row.append(bb, document.createTextNode(t)); look.appendChild(row); }
-  look.hidden = !rows.length;
-  renderWin();
+  updateLook();
 }
 const ST = {}; for(const s of D.states){ if(s[2] && s[2][1]) ST[s[2][0]]=s[2][1]; }
 function stAbbr(n){ return ST[n]||n; }
@@ -775,25 +980,31 @@ function startDemo(){
   const a=AIRPORTS.find(x=>x.code==='BHM')||{lat:33.56,lon:-86.75}, b=AIRPORTS.find(x=>x.code==='DEN')||{lat:39.85,lon:-104.67};
   if(!destAp || store.get('dest',null)==null) destAp = AIRPORTS.find(x=>x.code==='DEN')||null;
   const total=dist(a.lat,a.lon,b.lat,b.lon), speed=231; // m/s ≈ 450 kt
-  let flown=total*0.22, lat=a.lat, lon=a.lon; trail=[];
-  // pre-fill trail
-  let t=0; while(t<flown){ const step=Math.min(20000, flown-t); const br=brg(lat,lon,b.lat,b.lon); trail.push([lat,lon]); [lat,lon]=dest(lat,lon,br,step); t+=step; }
-  let simT=Date.now(); lastFixForTrack=null;
+  let lat=a.lat, lon=a.lon, flown=0; trail=[];
+  let simT=Date.now(); lastFixForTrack=null; altS=null;
+  const climb=220000, descent=230000, cruise=10668;
+  const profile=f=>{ // altitude (m) and speed (m/s) along the route
+    if(f<climb){ const x=f/climb; return [150+cruise*Math.sqrt(x), 85+(speed-85)*Math.min(1,x*1.4)]; }
+    const left=total-f; if(left<descent){ const x=Math.max(0,left/descent); return [150+cruise*x, 80+(speed-80)*Math.min(1,x*1.3)]; }
+    return [cruise, speed];
+  };
   const tick=()=>{
-    const br=brg(lat,lon,b.lat,b.lon); const step=speed*30*0.5; // 30x, every 0.5s
-    if(dist(lat,lon,b.lat,b.lon)<step){ lat=a.lat; lon=a.lon; trail=[]; }
-    [lat,lon]=dest(lat,lon,br,step); simT+=15000;
-    onFix({lat,lon,alt:10668+Math.sin(simT/9e5)*40,spd:speed,hdg:br,acc:8,t:simT});
+    const [,spd0]=profile(flown);
+    const br=brg(lat,lon,b.lat,b.lon); const step=spd0*30*0.5; // 30x, every 0.5s
+    if(dist(lat,lon,b.lat,b.lon)<step){ lat=a.lat; lon=a.lon; flown=0; trail=[]; altS=null; }
+    [lat,lon]=dest(lat,lon,br,step); flown+=step; simT+=15000;
+    const [alt,spd1]=profile(flown);
+    onFix({lat,lon,alt,spd:spd1,hdg:br,acc:8,t:simT});
   };
   tick(); demoTimer=setInterval(tick,500);
   setStatus('demo','Demo flight · 30× speed', true);
-  if(!saved) view.z=7;
+  view.z=7.5; follow=true;
 }
 function stopDemo(quiet){ if(demoTimer){ clearInterval(demoTimer); demoTimer=null; pos=null; trail=store.get('trail',[]); lastFixForTrack=null; if(store.get('dest',null)==null) destAp=null; dirty=true; } }
 $('demoBtn').onclick=()=>{ if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId=null; } closeSheet(); stopDemo(); startDemo(); };
 
 /* ---------- sheet ---------- */
-function openSheet(){ $('scrim').hidden=false; $('sheet').hidden=false; renderResults(); }
+function openSheet(){ $('scrim').hidden=false; $('sheet').hidden=false; renderResults(); renderFlights(); }
 function closeSheet(){ $('scrim').hidden=true; $('sheet').hidden=true; }
 $('winBtn').onclick=openWin; $('winClose').onclick=closeWin; $('scrim').addEventListener('click',closeWin);
 $('menu').onclick=openSheet; $('close').onclick=closeSheet; $('scrim').onclick=closeSheet;
@@ -816,10 +1027,11 @@ function renderResults(){
 $('q').addEventListener('input', renderResults);
 $('clearDest').onclick=()=>{ destAp=null; store.set('dest',null); updateTape(); dirty=true; };
 $('clearTrail').onclick=()=>{ trail=[]; if(source==='gps') store.set('trail',[]); dirty=true; };
-for(const b of document.querySelectorAll('#units .pill')) b.onclick=()=>{ units=b.dataset.u; store.set('units',units); markUnits(); updateTape(); updateWhere(); dirty=true; };
+for(const b of document.querySelectorAll('#units .pill')) b.onclick=()=>{ units=b.dataset.u; store.set('units',units); markUnits(); updateTape(); updateWhere(); renderFlights(); dirty=true; };
 function markUnits(){ for(const b of document.querySelectorAll('#units .pill')) b.setAttribute('aria-pressed', b.dataset.u===units); }
 for(const b of document.querySelectorAll('#themes .pill')) b.onclick=()=>{ theme=b.dataset.t; store.set('theme',theme); applyTheme(); };
 markUnits();
+for(const b of document.querySelectorAll('#visRow .pill')) b.onclick=()=>{ visMode=b.dataset.v; store.set('vis',visMode); updateLook(); dirty=true; };
 for(const b of document.querySelectorAll('#seat .pill')) b.onclick=()=>{ seat=b.dataset.s; store.set('seat',seat); updateWhere(); renderWin(); dirty=true; };
 function markZones(){ $('zonesBtn').setAttribute('aria-pressed', !!zonesOn); }
 $('zonesBtn').onclick=()=>{ zonesOn=zonesOn?0:1; store.set('zones',zonesOn); markZones(); dirty=true; };
